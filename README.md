@@ -1,6 +1,6 @@
 # iFrame Focus Tracker
 
-Can't attach event listeners to a cross domain `<iframe>` element and totally BUMMED? You wanted to track interactions with your Youtube embed or some form embed, but ran into issues? Trying to send Analytics events for iframe interactions?
+Can't attach event listeners to a cross domain `<iframe>` element and totally BUMMED? You wanted to track interactions with your Youtube embed, social media like button, or some form embed, but ran into issues? Trying to send Analytics events for iframe interactions?
   
 Me too.
 
@@ -18,9 +18,15 @@ Example:
   ift.track('.thingy', (thingy)=>{console.log(thingy.className);}, true);
 ```  
 
+## Caveats
+
+* This only tracks each time focus changes from the window to the iframe, so subsequent interactions within the iframe won't be tracked until you interact with the outer window again * 
+
+That means if you click an iframe embed, it'll only track the first time you click. If you keep clicking within the iframe, it won't do anything until you click back outside the embed, then click the iframe again.
+
 ## How it Works
 
-This checks if the `window` object has focus. If it loses focus, that means the user has shifted focus to an iframe element.
+This checks if the `window` object has focus. If it loses focus, that means the user has shifted focus to an iframe element. Every time you move from window -> iframe, it'll track the event.
 
 Based on this answer https://stackoverflow.com/a/50864085.
 
@@ -29,3 +35,7 @@ https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement
 https://developer.mozilla.org/en-US/docs/Web/API/DocumentOrShadowRoot/activeElement
 https://gist.github.com/jaydson/1780598
 https://javascript.info/cross-window-communication
+
+## Requirements
+
+* ES6 (Let, Const, Default Parameters, Destructuring, Arrow Functions, Array.filter)
