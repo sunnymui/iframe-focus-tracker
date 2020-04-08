@@ -1,20 +1,19 @@
-
 const ift = ((window, document) => {
-	/* 
+/* 
   HOW TO USE
   Use the ift.track() function to declare iframe elements you wish to track interaction for.
   Example:  
   // track an iframe element with a class="thingy" and log the class when interacted with, but only on the first time
   ift.track('.thingy', (thingy)=>{console.log(thingy.className);}, true);
-  */
+*/
 	
-  // to allow single time or multiple time tracking functionality
+  // to allow single or multiple occurance tracking functionality
   let state = {
     tracked: [],
     untracked: []
   };
   
-  function track(iframeSelector, callback, once = false) {
+  function track(iframeSelector, callback = ()=>{}, once = false) {
     /*
     (str) - css selector for element to track
     (fn obj) - callback function to run when tracked element found
@@ -38,10 +37,10 @@ const ift = ((window, document) => {
   }
   
   function untrack (element, shouldUntrack) {
-  	/*
+  /*
     (dom obj) - the dom element to stop tracking
     (bool) - should we stop tracking this element?
-  	*/
+  */
     if (shouldUntrack) {
     		// don't keep the untracked item 
         state.tracked = state.tracked.filter(item => item.element !== element);
@@ -49,21 +48,28 @@ const ift = ((window, document) => {
         state.untracked.concat([element]);
     }
   }
+	
+  function handleIframe(iframeArray) {
+  /*
+   (arr) - array of tracked items from state that matched the active element
+  */
+	// if we matched a tracked element
+    if (iframeArray.length > 0) {
+      const {element, action, once} = iframeArray[0];
+      // run the callback, passing the element
+      action(element);
+      // untrack if configured to
+      untrack(element, once);
+    }
+  }
 
   function windowBlurred(e) {
-  	// what has focus currently?
+    // what has focus currently?
     const active = document.activeElement;
     if (active instanceof HTMLIFrameElement) {
       // check if it is a tracked iframe
       const foundIframe = state.tracked.filter(item => item.element === active);
-      // if we matched a tracked element
-      if (foundIframe.length > 0) {
-        const trackedItem = foundIframe[0];
-        // run the callback, passing the element
-        trackedItem.action(active);
-        // untrack if configured to
-        untrack(active, trackedItem.once);
-      }
+      handleIframe(foundIframe);
     } 
   }
 
