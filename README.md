@@ -11,16 +11,21 @@ Use the ift.track() function to declare iframe elements you wish to track intera
 2. Callback (function) - A function to be executed when the tracked element gets focus, will be passed the tracked element as the first parameter
 3. Whether to track once (boolean) - Default is false. If set to true, it will only track the focus event the first time it happens and execute the callback only once.
 
-Example: 
+Example JS: 
 ``` 
-  // consider whether you need to listen for the document to be ready before initiating tracking 
+  // consider whether you need to listen for the document to be ready before initiating tracking
+  
   // track an iframe element with a class="thingy" and log the class when interacted with, but only on the first time
   ift.track('.thingy', (thingy)=>{console.log(thingy.className);}, true);
-```  
+``` 
+Given this HTML:
+```
+  <iframe class="thingy" src="https://someiframeurl.com" width="100%" height="500px" frameborder="0"></iframe>
+```
 
 ## Caveats
 
-* This only tracks each time focus changes from the window to the iframe, so subsequent interactions within the iframe won't be tracked until you interact with the outer window again * 
+*This only tracks each time focus changes from the window to the iframe, so subsequent interactions within the iframe won't be tracked until you interact with the outer window again* 
 
 That means if you click an iframe embed, it'll only track the first time you click. If you keep clicking within the iframe, it won't do anything until you click back outside the embed, then click the iframe again.
 
