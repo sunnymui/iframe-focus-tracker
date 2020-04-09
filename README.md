@@ -1,4 +1,4 @@
-# iFrame Focus Tracker
+# Cross Domain iFrame Focus Tracker
 
 Can't attach event listeners to a cross domain `<iframe>` element and totally BUMMED? You wanted to track interactions with your Youtube embed, social media like button, or some form embed, but ran into issues? Trying to send Analytics events for iframe interactions?
   
