@@ -67,36 +67,17 @@ const ift = ((window, document) => {
     }
   }
 
-  function checkIframeEqual(current) {
-    /*
-    (dom obj) - the current iframe dom element to check against the active element
-    */
-    // check for when current active element iframe has changed
-    if (current === document.activeElement) {
-      // rAF loop is more page perf optimized than a setTimeOut) to poll for changes
-      window.requestAnimationFrame(checkIframeEqual);
-    } else {
-      // return focus to window so next iframe focus registers in tracker
-      window.focus();
-    }
-  }
-
-  function checkIfMultipleTracked(trackedLength, activeIframe) {
-    /*
-    (int) - length of the tracked array to see if we need to do iframe equality checking
-    (dom obj) - the current iframe dom object to check against the active element
-    */
-    if (trackedLength > 1) {
-      window.requestAnimationFrame(checkIframeEqual.bind(this, activeIframe));
-    }
-  }
-
   function windowBlurred(e) {
+    /*
+    (obj) - the event object
+    */
     const tracked = state.tracked;
     // what has focus currently?
     const active = document.activeElement;
     if (active instanceof HTMLIFrameElement) {
-      checkIfMultipleTracked(tracked.length, active);
+      // reset window focus to allow for multiple/inter iframe clicks
+      // wrap in settimeout to execute at end of call stack, focus change wont get overridden
+      window.setTimeout(window.focus, 0);
       // check if it is a tracked iframe
       const foundIframe = tracked.filter(item => item.element === active);
       handleIframe(foundIframe);
