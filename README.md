@@ -6,27 +6,64 @@ Me too.
 
 ## How to Use
 
-Use the ift.track() function to declare iframe elements you wish to track interaction for. ift.track takes 3 arguments:
+#### ift.track()
+
+Use the `ift.track()` function to declare iframe elements you wish to track interaction for. `ift.track` takes 3 arguments:
 
 1. CSS Selector for the element to track (string) - Selector to use to grab the element, anything that works with document.querySelector.
-2. Callback (function) - A function to be executed when the tracked element gets focus, will be passed the tracked element as the first parameter
-3. Whether to track once (boolean) - Default is false. If set to true, it will only track the focus event the first time it happens and execute the callback only once.
+2. Callback (function) - A function to be executed when the tracked element gets focus, will be passed the tracked element as the first parameter. Default: Empty anonymous function.
+3. Configuration Options (object) - An optional object containing configuration options. You don't have to create the whole config object again to customize just one option, any options missing will have the defaults applied:
+  - Once (bool) - Should we only track the first interaction with the iframe? Thus, callback will only run once. Default: false
+  - Form (bool) - Is this a form or complex structure requiring input that returning focus to the window would mess up? Setting to true will turn off window refocusing after interaction which also disables sequential clicks in the iframes. Only applies to the element this is set for. Default: false
 
-Example JS: 
+Example: 
 ``` 
   // consider whether you need to listen for the document to be ready before initiating tracking
   
   // track an iframe element with a class="thingy" and log the class when interacted with, but only on the first time
-  ift.track('.thingy', (thingy)=>{console.log(thingy.className);}, true);
+  ift.track('.thingy', (thingy) => {console.log(thingy.className);}, {once: true});
+  
+  // track an iframe element with a form with a class="thingy" and log the class when interacted with
+  // form option must be set to true if you want the form to be usable!
+  ift.track('.thingy', (thingy) => {console.log(thingy.className);}, {form: true});
 ``` 
+
 Given this HTML:
 ```
   <iframe class="thingy" src="https://someiframeurl.com" width="100%" height="500px" frameborder="0"></iframe>
 ```
 
-### Sample IRL Usage
+#### ift.ifReady()
 
-Here's an example using it to track interactions with an embedded form and sending that data to Google Analytics as an event:
+Use the `ift.ifReady()` function to wrap your tracking function and ensure the iframe is has finished loading and is ready to attach trackers to in the DOM. `ift.ready` takes 2 arguments:
+
+1. Selector (string) - The css selector for the iframe to monitor in the DOM until it has fully loaded (fired the 'load' event). This can be an existing iframe element or an element that is not in the DOM yet, but will be added dynamically or asynchronously.
+2. Callback (function) - The callback function to run once the iframe has fired the 'load' event. Typically would be an anonymous function which you put your ift.track function inside of. This function is passed the Selector string as an argument.
+
+Example:
+```
+// wait for iframe to be added to the DOM and finish loading, then log a console message when clicked 
+// default options are set when no config object passed ({once: false, form: false})
+ift.ifReady('#iframe-container iframe', (selector)=>{
+  ift.track(selector, () => console.log('iframe clicked'));
+});
+```
+
+Given this HTML:
+```
+  <div id="iframe-container"></div>
+  <script>
+  const iframe = document.createElement('iframe');
+  const html = '<body>Foo</body>';
+  iframe.srcdoc = html;
+  iframe.sandbox = '';
+  document.querySelector('#iframe-container').append(iframe);
+  </script>
+```
+
+### Sample Real Life Usage
+
+Here's an example using it to track an interaction with an embedded form and sending that data to Google Analytics as an event:
 ```
 function ga_embed_event_handler(element){
     if (ga){
@@ -36,38 +73,10 @@ function ga_embed_event_handler(element){
 
 const embed_selector = '#maker-register';
 
-// wait for maker register form to load before tracking
-const iframe = document.querySelector(embed_selector);
-iframe.addEventListener('load', ()=>{
-      // in case they interact with the blank iframe box before it loads, only want to track if they actually see the form and interact
-      window.focus(); 
-      ift.track(embed_selector, ga_embed_event_handler, true);
+// wait for maker register form load event to fire before tracking
+ift.ifReady(embed_selector, (selector)=>{
+  ift.track(selector, ga_embed_event_handler, {once: true, form: true});
 });
-```
-
-What if you have a dynamically added iframe element? You can wrap your basic onload listener in a requestAnimationFrame loop that polls the page until the iframe page is found like so:
-
-```
-function checkIframeLoaded(timestamp) {
- /* Use an rAF loop (more page perf optimized than a setTimeOut) to check for when iframe has loaded*/
-  try {
-    const iframe = document.querySelector(embed_selector);
-    if (!iframe) {
-      throw 'Not Created Yet';
-    }
-    iframe.addEventListener('load', ()=>{
-      // in case they interact with the blank iframe box before it loads, only want to track if they actually see the form and interact
-      window.focus(); 
-      ift.track(embed_selector, ga_embed_event_handler, true);
-    });
-  }
-  catch(error) {
-    window.requestAnimationFrame(checkIframeLoaded);
-  }
-}
-
-// monitor page for the iframe to be added
-window.requestAnimationFrame(checkIframeLoaded);
 ```
 
 Have several iframes to track on the page? You can do something like this:
@@ -78,26 +87,29 @@ const elements = [{
 }, {
   selector: '.airtable-embed',
   handler: ga_assist_event_handler
+}, {
+... etc more
 }];
 
 elements.forEach((current, i) => {
-  // wait for iframe to load before tracking
   const iframe = document.querySelector(current.selector);
-  iframe.addEventListener('load', ()=>{
-      // in case they interact with the blank iframe box before it loads, only want to track if they actually see the form and interact
-      window.focus(); 
-      ift.track(current.selector, current.handler, true);
-  });
+  ift.track(current.selector, current.handler, true);
 });
 ```
 
 ## Caveats
 
-*This only tracks each time focus changes from the window to the iframe, so it can't detect anything about what you are clicking on inside the iframe, just that the iframe is being interacted with* 
+*This only tracks each time focus changes from the window to the iframe, so it can't detect anything about what you are clicking on inside the iframe, just that the iframe itself has been interacted with*
+
+#### Form + Other Embeds on the Same Page
+
+If you have a iframe form embed and a simple iframe button embed, clicking on the form iframe then clicking directly on the button iframe right after won't register the interaction with the button. You have to manually click back in the window before interactions with other iframes will be tracked.
+
+This is because the `form: true` option disables automatic window refocusing after a click in an iframe element so users are able to type things into the form. Remember, this tracker only detects when focus changes from the window, so if you click from one iframe to another iframe, you will never have a focus change from the window.
 
 ## How it Works
 
-This checks if the `window` object has focus. If it loses focus, that means the user has shifted focus to an iframe element. Every time you move from window -> iframe, it'll track the event. Different iframes are differentiated by comparing the current active element to cached versions. When focus is moved to an iframe, a setTimeout call with a window focusing callback will be set so focus will be reset at the end of current JS execution and subsequent clicks--either on the same iframe or other iframes--will be tracked.
+This checks if the `window` object has focus. If it loses focus, that means the user has shifted focus to an iframe element. Every time you move from window -> iframe, it'll track the event. Different iframes are differentiated by comparing the current active element to cached versions. When focus is moved to an iframe, a `setTimeout` call with a window focusing callback will be set so focus will be reset at the end of current JS execution and subsequent clicks--either on the same iframe or other iframes--will be tracked.
 
 Based on this answer https://stackoverflow.com/a/50864085.
 
@@ -109,4 +121,4 @@ Further Reading:
 
 ## Requirements
 
-* ES6 (Let, Const, Default Parameters, Destructuring, Arrow Functions, Array.filter)
+* ES6 (Let, Const, Default Parameters, Destructuring, Arrow Functions, Array.filter, spread operator, Promises, requestAnimationFrame)
