@@ -13,12 +13,21 @@ const ift = ((window, document) => {
     untracked: []
   };
 
-  function track(iframeSelector, callback = () => {}, once = false) {
+  function track(iframeSelector, callback = () => {}, config) {
     /*
     (str) - css selector for element to track
     (fn obj) - callback function to run when tracked element found
-    (bool) - whether to track the focus event occuring once or multiple times a session
+    (obj) - config with options for:
+              once - track only first interaction
+              form - is this a form or complex element? sequential iframe
+                     click tracking will be disabled since it blocks forms
+                     from working due to focus moving to window constantly
     */
+    // default config
+    const defaultConfig = {once: false, form: false};
+    // defaults then overwrite with passed config to allow partial custom config
+    config = {...defaultConfig, ...config}
+    const {once, form} = config;
     try {
       const trackedElement = document.querySelector(iframeSelector);
       // watch out for elements that don't exist, likely due to a mistyped selector
@@ -29,11 +38,40 @@ const ift = ((window, document) => {
       state.tracked = state.tracked.concat([{
         element: trackedElement,
         once: once,
-        action: callback
+        action: callback,
+        form: form
       }]);
     } catch (error) {
       console.log(error);
     }
+  }
+
+  function checkIframeExists(selector, resolve) {
+   /*
+   (str) - css selector string to query dom for iframe element
+   (fn obj) - resolve function for use in a Promise
+   */
+    const iframe = document.querySelector(selector);
+    // rAF loop (page perf > setInterval) to check DOM, resolve promise w/ iframe
+    !iframe ? window.requestAnimationFrame(checkIframeExists.bind(this, selector, resolve)) : resolve(iframe)
+  }
+
+  function ifReady(selector, callback) {
+    /*
+    (str) - the css selector string to query the dom for the iframe
+    (fn obj) - callback function to run when ready, passed the selector str
+    */
+    // in case of dynamically added iframe to wait for it to exist in dom
+    let iframeInDOM = new Promise((resolve, reject) => {
+      // monitor page for the iframe existence in dom in case of dynamic append
+      window.requestAnimationFrame(checkIframeExists.bind(this, selector, resolve));
+    });
+    // after iframe exists, wait for load event before running callback
+    iframeInDOM.then((iframe) => {
+      iframe.addEventListener('load', (e) => {
+        callback(selector);
+      });
+    });
   }
 
   function untrack(element, shouldUntrack) {
@@ -58,12 +96,16 @@ const ift = ((window, document) => {
       const {
         element,
         action,
-        once
+        once,
+        form
       } = iframeArray[0];
       // run the callback, passing the element
       action(element);
       // untrack if configured to
       untrack(element, once);
+      // if not a form, reset window focus to allow for multiple/inter iframe clicks
+      // executes async at end of call stack so focus change wont get overridden
+      (!form && window.setTimeout(window.focus, 0));
     }
   }
 
@@ -74,10 +116,8 @@ const ift = ((window, document) => {
     const tracked = state.tracked;
     // what has focus currently?
     const active = document.activeElement;
+    const first_blur = true;
     if (active instanceof HTMLIFrameElement) {
-      // reset window focus to allow for multiple/inter iframe clicks
-      // wrap in settimeout to execute at end of call stack, focus change wont get overridden
-      window.setTimeout(window.focus, 0);
       // check if it is a tracked iframe
       const foundIframe = tracked.filter(item => item.element === active);
       handleIframe(foundIframe);
@@ -89,7 +129,8 @@ const ift = ((window, document) => {
   window.addEventListener('blur', windowBlurred, true);
 
   return {
-    track
+    track,
+    ifReady
   }
 
 })(window, document);
