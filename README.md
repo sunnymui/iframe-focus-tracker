@@ -97,6 +97,40 @@ elements.forEach((current, i) => {
 });
 ```
 
+### ES6 Module Usage
+
+If you want to be super modern, you can use the `ift-es6-module.js` file as an ES6 module you can import into your html. Only usable in modern browsers, read more at: [https://caniuse.com/#feat=es6-module](https://caniuse.com/#feat=es6-module)
+
+Example:
+
+```
+<script type="module">
+      import * as ift from './ift-es6-module.js';
+
+      ift.track('#hello',()=>{
+        console.log('hello');
+      });
+
+</script>
+``` 
+
+Or as an external script:
+
+HTML:
+```
+<script type="module" src="app.js"></script>
+```
+JS:
+```
+// in your main app.js file import the ift module file
+import * as ift from './ift-es6-module.js';
+
+      ift.track('#hello',()=>{
+        console.log('hello');
+      });
+
+```
+
 ## Caveats
 
 *This only tracks each time focus changes from the window to the iframe, so it can't detect anything about what you are clicking on inside the iframe, just that the iframe itself has been interacted with*
@@ -113,7 +147,8 @@ This checks if the `window` object has focus. If it loses focus, that means the 
 
 Based on this answer https://stackoverflow.com/a/50864085.
 
-Further Reading:
+## Further Reading:
+
 * https://developer.mozilla.org/en-US/docs/Web/API/HTMLIFrameElement
 * https://developer.mozilla.org/en-US/docs/Web/API/DocumentOrShadowRoot/activeElement
 * https://gist.github.com/jaydson/1780598
@@ -121,4 +156,5 @@ Further Reading:
 
 ## Requirements
 
-* ES6 (Let, Const, Default Parameters, Destructuring, Arrow Functions, Array.filter, spread operator, Promises, requestAnimationFrame)
+* ES6 (Let, Const, Default Parameters, Destructuring, Arrow Functions, Array.filter, spread operator, Promises, requestAnimationFrame, Modules {if you use the es6 module file})
+* HTML5 (HTMLElement.focus() web api)
