@@ -4,7 +4,7 @@ const ift = ((window, document) => {
     Use the ift.track() function to declare iframe elements you wish to track interaction for.
     Example:
     // track an iframe element with a class="thingy" and log the class when interacted with, but only on the first time
-    ift.track('.thingy', (thingy)=>{console.log(thingy.className);}, true);
+    ift.track('.thingy', (thingy)=>{console.log(thingy.className);}, {once:true});
   */
 
   // to allow single or multiple occurance tracking functionality
@@ -22,24 +22,33 @@ const ift = ((window, document) => {
               form - is this a form or complex element? sequential iframe
                      click tracking will be disabled since it blocks forms
                      from working due to focus moving to window constantly
+              start - when/which focus event to start running callback at
     */
     // default config
-    const defaultConfig = {once: false, form: false};
+    const defaultConfig = {
+      once: false,
+      form: false,
+      start: 0
+    };
     // defaults then overwrite with passed config to allow partial custom config
     config = {...defaultConfig, ...config}
-    const {once, form} = config;
+    const {once, form, start} = config;
+    // start interactions counter at 0 for state.tracked obj
+    const interactions = 0;
     try {
-      const trackedElement = document.querySelector(iframeSelector);
+      const element = document.querySelector(iframeSelector);
       // watch out for elements that don't exist, likely due to a mistyped selector
-      if (!trackedElement) {
+      if (!element) {
         throw 'iFrame Tracker: Element not found: ' + iframeSelector
       }
       // remember the element to watch and associated info for what to do with it
       state.tracked = state.tracked.concat([{
-        element: trackedElement,
-        once: once,
-        action: callback,
-        form: form
+        element,
+        once,
+        callback,
+        form,
+        interactions,
+        start
       }]);
     } catch (error) {
       console.log(error);
@@ -74,35 +83,62 @@ const ift = ((window, document) => {
     });
   }
 
-  function untrack(element, shouldUntrack) {
+  function updateState(iframeResults, shouldUntrack) {
     /*
-      (dom obj) - the dom element to stop tracking
+      (obj) - obj w/ 2 arrays, match - the matched tracked item to found iframe
+      and unmatched - the nonmatched items from state.tracked
       (bool) - should we stop tracking this element?
     */
+    let {tracked, untracked} = state;
+    let {matched: [match], unmatched} = iframeResults;
+
+    // increment the match's # of interactions
+    match.interactions += 1;
+
     if (shouldUntrack) {
-      // don't keep the untracked item
-      state.tracked = state.tracked.filter(item => item.element !== element);
+      // leave out the untracked item in tracked
+      tracked = unmatched;
       // save it to untracked array just in case
-      state.untracked.concat([element]);
+      untracked = untracked.concat(match);
+    } else {
+      // put the match and unmatches back together as new tracked array
+      tracked = untracked.concat(match);
+    }
+
+    return {
+      tracked,
+      untracked
     }
   }
 
-  function handleIframe(iframeArray) {
+  function handleIframe(iframeResults) {
     /*
-     (arr) - array of tracked items from state that matched the active element
+     (obj) - obj w/ 2 arrays, match - the matched tracked item to found iframe
+     and unmatched - the nonmatched items from state.tracked
     */
+    const matched = iframeResults.matched;
     // if we matched a tracked element
-    if (iframeArray.length > 0) {
+    if (matched.length > 0) {
       const {
         element,
-        action,
+        callback,
         once,
-        form
-      } = iframeArray[0];
-      // run the callback, passing the element
-      action(element);
-      // untrack if configured to
-      untrack(element, once);
+        form,
+        interactions,
+        start
+      } = matched[0];
+      // only run callback if interaction count is high enough to start
+      if (interactions >= start) {
+        // run the callback, passing the element
+        callback(element);
+      }
+      // build new state in case we are untracking an iframe set to 1 time tracking
+      const updatedState = updateState(iframeResults, once);
+      // update current state
+      state = {
+        ...state,
+        ...updatedState
+      }
       // if not a form, reset window focus to allow for multiple/inter iframe clicks
       // executes async at end of call stack so focus change wont get overridden
       (!form && window.setTimeout(window.focus, 0));
@@ -113,14 +149,20 @@ const ift = ((window, document) => {
     /*
     (obj) - the event object
     */
-    const tracked = state.tracked;
+    const {tracked} = state;
     // what has focus currently?
     const active = document.activeElement;
-    const first_blur = true;
     if (active instanceof HTMLIFrameElement) {
-      // check if it is a tracked iframe
-      const foundIframe = tracked.filter(item => item.element === active);
-      handleIframe(foundIframe);
+      // checks if it is a tracked iframe and saves match/unmatched results
+      const matcher = (accumulator, current) => {
+        (current.element === active) ?
+          accumulator.matched.push(current) :
+          accumulator.unmatched.push(current);
+        return accumulator
+      };
+      const foundIframes = tracked.reduce(matcher, {matched:[], unmatched:[]});
+
+      handleIframe(foundIframes);
     }
   }
 
