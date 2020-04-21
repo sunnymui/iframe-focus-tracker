@@ -90,11 +90,12 @@ function updateState(iframeResults, shouldUntrack) {
   */
   let {tracked, untracked} = state;
   let {matched: [match], unmatched} = iframeResults;
+  const {interactions, start} = match;
 
   // increment the match's # of interactions
   match.interactions += 1;
 
-  if (shouldUntrack) {
+  if (shouldUntrack && (interactions >= start)) {
     // leave out the untracked item in tracked
     tracked = unmatched;
     // save it to untracked array just in case
