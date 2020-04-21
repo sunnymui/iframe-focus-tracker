@@ -8,7 +8,7 @@ Me too.
 
 #### ift.track()
 
-Use the `ift.track()` function to declare iframe elements you wish to track interaction for. `ift.track` takes 3 arguments:
+Use the `ift.track()` function to declare the iframe element you wish to track interaction for. `ift.track` takes 3 arguments:
 
 1. CSS Selector for the element to track (string) - Selector to use to grab the element, anything that works with document.querySelector.
 2. Callback (function) - A function to be executed when the tracked element gets focus, will be passed the tracked element as the first parameter. Default: Empty anonymous function.
@@ -137,6 +137,8 @@ import * as ift from './ift-es6-module.js';
 *This only tracks each time focus changes from the window to the iframe, so it can't detect anything about what you are clicking on inside the iframe, just that the iframe itself has been interacted with*
 
 If you try to directly use a console.log as the callback it won't work, you need to wrap it in an anonymous function.
+
+Attaching multiple trackers to the same iframe element--say you want a callback that happens once and one to happen for every interactions--is possible, but not fully supported (some caveats). Attach the tracker that runs once first, then the tracker that runs multiple times after. The run-once tracker will run first, then the multiple-time tracker will run on every subsequent time. This is because it matches the first possible tracker in the tracking list. If you want both functions to run, you'll have to wrap both in a function and have a variable to track when a function has already run.
 
 #### Form + Other Embeds on the Same Page
 
